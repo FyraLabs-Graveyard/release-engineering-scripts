@@ -8,13 +8,10 @@
 
 from genericpath import exists
 from glob import glob
-import json
 import shutil
 import koji
 import os
 import subprocess
-import sys
-import umpkg_cli.util as util
 import logging
 import umreleng.koji as kojiThread
 import pygit2

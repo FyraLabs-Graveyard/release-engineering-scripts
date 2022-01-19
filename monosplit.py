@@ -23,11 +23,9 @@
 # EXISTING REPOS WILL BE OVERWRITTEN
 
 import os
-import sys
 import gitlab
 import configparser
 
-from itsdangerous import exc
 
 config = configparser.ConfigParser()
 
