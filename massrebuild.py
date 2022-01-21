@@ -76,8 +76,19 @@ for package in pkgs:
         noRebuild(pkgname, "not found on Gitlab")
         continue
     else:
-        # get the first repo and convert it to a dict
-        pkg_repo = pkg_repo[0].attributes
+        # check for each repo if the name matches the package name
+        for pkg in pkg_repo:
+            if pkg.path_with_namespace.split("/")[1] == pkgname:
+                # if the name matches, get the repo
+                pkg_repo = pkg.attributes
+            # if not then look for the next repo
+            else:
+                continue
+            # if there's still no repo, then the package is not on Gitlab
+            if not pkg_repo:
+                logger.warning(f"Package {pkgname} not found on Gitlab, will not be rebuilt.")
+                noRebuild(pkgname, "not found on Gitlab")
+                continue
     logger.debug(pkg_repo["http_url_to_repo"])
     logger.info(f"Cloning {pkgname}")
     try:
