@@ -185,5 +185,5 @@ for package in pkgs:
     # format the URL for the koji build
     url = f'git+{pkg_repo["http_url_to_repo"]}#{commit}'
     logger.debug(f"URL for {pkgname} is {url}")
-    build = session.build(src=url, target=tag, opts={"scratch": True})
+    build = session.build(src=url, target=tag, opts={"scratch": False})
     kojiThread.KojiWatcher(build).start()
