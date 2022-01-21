@@ -163,9 +163,13 @@ for package in pkgs:
         logger.info(f"Pushing {ref.name} for {pkgname}")
         for remote in git.remotes:
             if remote.name == "origin":
-                # set up credentials
-                cred = pygit2.UserPass(username, password)
-                remote.push([ref.name], cred)
+                # set up credential callback with username password
+                cred_cb = pygit2.RemoteCallbacks(
+                    credentials=pygit2.UserPass(username, password))
+                remote.push(
+                    [ref.name],
+                    callbacks=cred_cb,
+                )
     except pygit2.GitError as e:
         # if it's authention error exit the script
         if "authentication required" in str(e):
