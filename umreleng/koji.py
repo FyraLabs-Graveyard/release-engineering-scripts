@@ -1,10 +1,26 @@
 # koji watcher thread
 from asyncio import tasks
+from genericpath import exists
 import koji
 import threading
 import time
 import umreleng.logger as logger
 import sys
+import os
+
+def noRebuild(pkg, reason):
+    # logs the package name and appends it to NOREBUILD
+    # check if line with pkg name already exists in NOREBUILD
+    # if NOREBUILD doesnt exist, create it
+    if not exists("./NOREBUILD"):
+        with open("./NOREBUILD", "w+") as f:
+            f.write(pkg)
+    with open("./NOREBUILD", "r+") as f:
+        if pkg in f.read():
+            return True
+        else:
+            f.write(f"{pkg}: {reason}" + "\n")
+            return
 
 
 class KojiWatcher(threading.Thread):
@@ -51,7 +67,7 @@ class KojiWatcher(threading.Thread):
                     time.sleep(5)
             elif task["state"] == koji.TASK_STATES["FAILED"]:
                 self.logger.info(f"Task {self.task} has failed")
-                self.stop()
+                sys.exit(1)
             else:
                 self.logger.info(f'Task {self.task} is in state {task["state"]}')
                 time.sleep(5)
