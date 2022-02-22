@@ -48,13 +48,26 @@ session.gssapi_login()
 
 tag = "um36"
 user = "Ultramarine Release Tracking Service"
-username = "umreleng"
-password = "umreleng"  # change this to your password
+creds = pygit2.credentials.KeypairFromAgent('git')
+
 comment = f"Mass rebuild for release {tag}"
 workdir = os.path.join(os.getcwd(), "workdir")
 # create workdir if it doesn't exist
 if not exists(workdir):
     os.mkdir(workdir)
+
+# callbacks
+class GitCallback(pygit2.RemoteCallbacks):
+    def credentials(self, url, username_from_url, allowed_types):
+        if allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+            return pygit2.Username('git')
+        # password authentication
+        if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
+            return pygit2.KeypairFromAgent('git')
+        return None
+    def push_update_reference(self, refname, message):
+        logger.info(f"Pushing update to {refname}, {message}") 
+
 
 # foo = session.getRepo('um36-build')
 gl = gitlab.Gitlab(url="https://gitlab.ultramarine-linux.org", private_token="")
@@ -90,10 +103,14 @@ for package in pkgs:
                 noRebuild(pkgname, "not found on Gitlab")
                 continue
     logger.debug(pkg_repo["http_url_to_repo"])
+    logger.debug(pkg_repo["ssh_url_to_repo"])
+    # replace ssh port with 2222
+    sshport = pkg_repo["ssh_url_to_repo"].replace(" ssh://git@", "ssh://git@:2222/")
     logger.info(f"Cloning {pkgname}")
     try:
         git = pygit2.clone_repository(
-            pkg_repo["http_url_to_repo"], os.path.join(workdir, pkgname)
+            pkg_repo["ssh_url_to_repo"], os.path.join(workdir, pkgname)
+            , callbacks=GitCallback(credentials=creds)
         )
     # except if the repo is already cloned
     except ValueError:
@@ -158,19 +175,15 @@ for package in pkgs:
     logger.debug(f"made commit for {pkgname}")
     # go back up
     os.chdir("../..")
-    # push the branch to the repo
     try:
         logger.info(f"Pushing {ref.name} for {pkgname}")
         for remote in git.remotes:
             if remote.name == "origin":
-                # set up credential callback with username password
-                cred_cb = pygit2.RemoteCallbacks(
-                    credentials=pygit2.UserPass(username, password))
-                remote.push(
-                    [ref.name],
-                    callbacks=cred_cb,
-                )
+                os.system("pwd")
+                os.chdir(os.path.join(workdir, pkgname))
+                push = remote.push([ref.name], callbacks=GitCallback(credentials=creds))
     except pygit2.GitError as e:
+        logger.error(f"{pkgname} failed to push: {e}")
         # if it's authention error exit the script
         if "authentication required" in str(e):
             logger.error(
